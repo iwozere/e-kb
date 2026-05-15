@@ -8,7 +8,7 @@ User=kbbot
 Group=kbbot
 WorkingDirectory=/opt/kb-bot
 EnvironmentFile=/opt/kb-bot/.env
-ExecStart=/opt/kb-bot/venv/bin/python -m bot.main
+ExecStart=/opt/kb-bot/.venv/bin/python -m bot.main
 Restart=on-failure
 RestartSec=5
 

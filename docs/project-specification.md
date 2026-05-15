@@ -12,7 +12,7 @@ Deployment target: **Raspberry Pi 5** (ARM64, Debian/Ubuntu). PostgreSQL is pre-
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Language | Python 3.11+ | |
+| Language | Python 3.13 (Ubuntu 25.10 default) | |
 | Bot framework | `aiogram` 3.x | async, webhook or polling |
 | Transcription | OpenAI Whisper API | `whisper-1`, $0.006/min |
 | Embeddings | OpenAI Embeddings API | `text-embedding-3-small`, $0.02/1M tokens |
@@ -342,12 +342,14 @@ Data is stored on disk at `CHROMA_PERSIST_DIR`. No additional services to manage
 
 ### System dependencies
 
+Target: **Ubuntu 25.10, Python 3.13, PostgreSQL 17** (confirmed on RPi 5).
+
 ```bash
 sudo apt update
-sudo apt install python3.11 python3.11-venv python3-pip ffmpeg
+sudo apt install python3-venv ffmpeg postgresql-17-pgvector
 ```
 
-`ffmpeg` is required by the `pydub` library to convert Telegram's OGG voice files before sending to Whisper.
+`ffmpeg` is optional — the Whisper API accepts OGG directly, but ffmpeg is useful for local audio inspection. `postgresql-17-pgvector` installs the pgvector extension for PostgreSQL 17.
 
 ### Setup
 
@@ -355,12 +357,9 @@ sudo apt install python3.11 python3.11-venv python3-pip ffmpeg
 cd /opt
 sudo git clone https://github.com/yourname/kb-bot.git
 cd kb-bot
-python3.11 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-sudo mkdir -p /var/lib/kb-bot/chroma
-sudo chown -R pi:pi /var/lib/kb-bot
 
 cp .env.example .env
 # fill in .env with your keys
