@@ -27,7 +27,7 @@ class FeaturesConfig:
 class Settings:
     telegram_bot_token: str
     openai_api_key: str
-    anthropic_api_key: str
+    gemini_api_key: str
     stripe_secret_key: str
     stripe_webhook_secret: str
     stripe_price_id: str
@@ -53,7 +53,7 @@ def _load() -> Settings:
     return Settings(
         telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
         openai_api_key=os.environ["OPENAI_API_KEY"],
-        anthropic_api_key=os.environ["ANTHROPIC_API_KEY"],
+        gemini_api_key=os.environ["GEMINI_API_KEY"],
         stripe_secret_key=os.environ.get("STRIPE_SECRET_KEY", ""),
         stripe_webhook_secret=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
         stripe_price_id=os.environ.get("STRIPE_PRICE_ID", ""),
