@@ -12,8 +12,8 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=pi
-Group=pi
+User=alkotrader
+Group=alkotrader
 WorkingDirectory=/opt/apps/e-kb
 Environment=LOG_DIR=/opt/apps/e-kb/logs
 ExecStart=/opt/apps/e-kb/.venv/bin/python -m bot.main
