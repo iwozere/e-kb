@@ -34,8 +34,10 @@ class Settings:
     database_url: str
     webhook_host: str
     webhook_path: str
+    web_port: int
     payment_hmac_secret: str
     admins: List[int]
+
     billing: BillingConfig
     features: FeaturesConfig
 
@@ -58,6 +60,7 @@ def _load() -> Settings:
         database_url=os.environ["DATABASE_URL"],
         webhook_host=os.environ.get("WEBHOOK_HOST", ""),
         webhook_path=os.environ.get("WEBHOOK_PATH", "/webhook"),
+        web_port=int(os.environ.get("WEB_PORT", "8080")),
         payment_hmac_secret=os.environ.get("PAYMENT_HMAC_SECRET", "change-me"),
         admins=[int(uid) for uid in cfg.get("admins", [])],
         billing=BillingConfig(

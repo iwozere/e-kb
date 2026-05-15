@@ -62,9 +62,9 @@ async def main() -> None:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    site = web.TCPSite(runner, "0.0.0.0", settings.web_port)
     await site.start()
-    logger.info("Web server started on :8080 (Stripe webhook at /stripe-webhook)")
+    logger.info("Web server started on :%d (Stripe webhook at /stripe-webhook)", settings.web_port)
 
     if settings.webhook_host:
         from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
