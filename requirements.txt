@@ -1,0 +1,11 @@
+aiogram==3.13.1
+aiohttp==3.11.11
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+pgvector==0.3.6
+openai==1.58.1
+anthropic==0.40.0
+stripe==11.4.0
+pyyaml==6.0.2
+python-dotenv==1.0.1

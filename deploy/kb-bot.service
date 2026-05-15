@@ -1,0 +1,21 @@
+[Unit]
+Description=Knowledge Base Telegram Bot
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=kbbot
+Group=kbbot
+WorkingDirectory=/opt/kb-bot
+EnvironmentFile=/opt/kb-bot/.env
+ExecStart=/opt/kb-bot/venv/bin/python -m bot.main
+Restart=on-failure
+RestartSec=5
+
+# Safety hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/kb-bot /var/log
+
+[Install]
+WantedBy=multi-user.target

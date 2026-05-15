@@ -1,0 +1,13 @@
+admins:
+  - 123456789        # Replace with your Telegram user_id
+
+billing:
+  enabled: true
+  monthly_price_usd: 5.00
+  trial_notes: 10
+  payment_url: "https://your-payment-page.com"
+
+features:
+  weekly_digest: true
+  vector_search: true
+  max_voice_duration_sec: 300

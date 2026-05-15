@@ -1,0 +1,50 @@
+# Virtual environment
+.venv/
+venv/
+
+# Secrets — never commit
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Distribution / build
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checkers
+.mypy_cache/
+.pyright/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ChromaDB data (if ever used locally)
+chroma_data/
+
+# Alembic compiled cache
+*.pyc
+
+# Claude Code local settings
+.claude/
+
+# Logs
+*.log
