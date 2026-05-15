@@ -17,6 +17,7 @@ import bot.handlers.summary as summary
 import bot.handlers.text_note as text_note
 import bot.handlers.voice as voice
 from bot.utils.config import settings
+from bot.utils.logging_setup import setup_logging
 from bot.utils.middleware import AccessMiddleware
 
 logger = logging.getLogger(__name__)
@@ -42,10 +43,7 @@ async def _init_db() -> None:
 
 
 async def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
+    setup_logging()
 
     await _init_db()
 

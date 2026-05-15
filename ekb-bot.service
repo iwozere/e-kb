@@ -1,0 +1,30 @@
+# Install: sudo cp ekb-bot.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now ekb-bot
+#
+# Logs:    journalctl -u ekb-bot -f
+#          tail -f /opt/apps/e-kb/logs/bot.log
+
+[Unit]
+Description=E-KB Telegram Knowledge Base Bot
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/apps/e-kb
+Environment=LOG_DIR=/opt/apps/e-kb/logs
+ExecStart=/opt/apps/e-kb/.venv/bin/python -m bot.main
+Restart=on-failure
+RestartSec=10
+# Give the bot 30 s to shut down gracefully before SIGKILL
+TimeoutStopSec=30
+
+# Harden a little — service only needs network and its own files
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
