@@ -25,7 +25,7 @@ async def generate_summary(entries_text: str) -> str:
         ),
         config=types.GenerateContentConfig(
             system_instruction="You are a personal knowledge assistant.",
-            max_output_tokens=1024,
+            max_output_tokens=4096,
         ),
     )
     return response.text or ""

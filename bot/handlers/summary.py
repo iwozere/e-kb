@@ -50,4 +50,18 @@ async def cmd_summary(message: Message) -> None:
         await status_msg.edit_text("Failed to generate summary. Please try again later.")
         return
 
-    await status_msg.edit_text(digest)
+    if len(digest) <= 4096:
+        await status_msg.edit_text(digest)
+    else:
+        await status_msg.delete()
+        # Split into chunks at paragraph boundaries
+        chunks, current = [], ""
+        for paragraph in digest.split("\n\n"):
+            block = paragraph + "\n\n"
+            if len(current) + len(block) > 4000:
+                await message.answer(current.strip())
+                current = block
+            else:
+                current += block
+        if current.strip():
+            await message.answer(current.strip())
