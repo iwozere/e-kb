@@ -1,3 +1,8 @@
+# ── DISABLED in v2 — no billing in v1 ───────────────────────────────────────
+# This file is kept as a stub for future reference.
+# It is NOT imported anywhere.  Do not re-enable without updating config.py
+# to restore the billing/stripe settings.
+# ─────────────────────────────────────────────────────────────────────────────
 import base64
 import hashlib
 import hmac

@@ -1,88 +1,116 @@
+"""Bot entry point — dispatcher setup, middleware, scheduler, polling/webhook."""
 import asyncio
 import logging
 
-from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from sqlalchemy import text as sql_text
+from sqlalchemy import select
 
-from bot.db.session import engine
+from bot.db.models import User
+from bot.db.session import AsyncSessionLocal
 import bot.handlers.admin as admin
+import bot.handlers.ask as ask
+import bot.handlers.delete as delete
+import bot.handlers.draft as draft
 import bot.handlers.export as export
-import bot.handlers.payment as payment
+import bot.handlers.log as log
+import bot.handlers.profile as profile
 import bot.handlers.search as search
 import bot.handlers.start as start
 import bot.handlers.summary as summary
 import bot.handlers.text_note as text_note
 import bot.handlers.voice as voice
+import bot.services.scheduler as sched
 from bot.utils.config import settings
-from bot.utils.logging_setup import setup_logging
 from bot.utils.middleware import AccessMiddleware
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
-def _build_dispatcher() -> Dispatcher:
-    dp = Dispatcher()
-    dp.message.middleware(AccessMiddleware())
-    dp.include_router(start.router)
-    dp.include_router(voice.router)
-    dp.include_router(text_note.router)
-    dp.include_router(search.router)
-    dp.include_router(summary.router)
-    dp.include_router(export.router)
-    dp.include_router(admin.router)
-    return dp
-
-
-async def _init_db() -> None:
-    async with engine.begin() as conn:
-        await conn.execute(sql_text("CREATE EXTENSION IF NOT EXISTS vector"))
-    logger.info("pgvector extension ensured")
+async def _fetch_first_names(user_ids: list[int]) -> dict[int, str]:
+    """Look up first_names for admin users from the DB (best-effort)."""
+    if not user_ids:
+        return {}
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User.id, User.first_name).where(User.id.in_(user_ids))
+        )
+        return {row[0]: row[1] or "User" for row in result.fetchall()}
 
 
 async def main() -> None:
-    setup_logging()
-
-    await _init_db()
-
     bot = Bot(
         token=settings.telegram_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    dp = _build_dispatcher()
+    dp = Dispatcher()
 
-    # Always start a web server so Stripe webhooks can reach the bot
-    stripe_handler = payment.stripe_webhook_handler(bot)
+    # ── Middleware ────────────────────────────────────────────────────────────
+    dp.message.middleware(AccessMiddleware())
+    dp.callback_query.middleware(AccessMiddleware())
+
+    # ── Routers (order matters: specific before catch-all) ────────────────────
+    dp.include_router(start.router)      # /start /help /status
+    dp.include_router(ask.router)        # /ask
+    dp.include_router(draft.router)      # /draft + save_example/regen callbacks
+    dp.include_router(log.router)        # /log
+    dp.include_router(summary.router)    # /day /summary
+    dp.include_router(search.router)     # /search
+    dp.include_router(delete.router)     # /delete + confirm/cancel callbacks
+    dp.include_router(profile.router)    # /profile
+    dp.include_router(export.router)     # /export
+    dp.include_router(admin.router)      # /admin_stats
+    dp.include_router(voice.router)      # voice messages
+    dp.include_router(text_note.router)  # plain text (catch-all — must be last)
+
+    # ── Scheduler ────────────────────────────────────────────────────────────
+    first_names = await _fetch_first_names(settings.admins)
+    for uid in settings.admins:
+        first_names.setdefault(uid, "User")
+
+    sched.setup_schedules(bot, settings.admins, first_names)
+    sched.start()
+
+    # ── Start polling or webhook ──────────────────────────────────────────────
+    try:
+        if settings.webhook_host:
+            await _run_webhook(bot, dp)
+        else:
+            logger.info("Starting in polling mode.")
+            await bot.delete_webhook(drop_pending_updates=True)
+            await dp.start_polling(bot)
+    finally:
+        sched.stop()
+        await bot.session.close()
+
+
+async def _run_webhook(bot: Bot, dp: Dispatcher) -> None:
+    from aiohttp import web  # noqa: PLC0415
+    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application  # noqa: PLC0415
+
+    webhook_url = f"{settings.webhook_host}{settings.webhook_path}"
+    await bot.set_webhook(
+        url=webhook_url,
+        allowed_updates=dp.resolve_used_update_types(),
+    )
+    logger.info("Webhook set: %s", webhook_url)
+
     app = web.Application()
-    app.router.add_post("/stripe-webhook", stripe_handler)
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=settings.webhook_path)
+    setup_application(app, dp, bot=bot)
 
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", settings.web_port)
     await site.start()
-    logger.info("Web server started on :%d (Stripe webhook at /stripe-webhook)", settings.web_port)
+    logger.info("Webhook server on :%s", settings.web_port)
 
-    if settings.webhook_host:
-        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-
-        webhook_url = f"{settings.webhook_host}{settings.webhook_path}"
-        await bot.set_webhook(webhook_url)
-        logger.info("Webhook set: %s", webhook_url)
-
-        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=settings.webhook_path)
-        setup_application(app, dp, bot=bot)
-
-        # Block forever — aiohttp runner is already serving
-        await asyncio.Event().wait()
-    else:
-        logger.info("Starting polling…")
-        try:
-            await dp.start_polling(bot)
-        finally:
-            await runner.cleanup()
-            await engine.dispose()
+    await asyncio.Event().wait()  # run until interrupted
 
 
 if __name__ == "__main__":

@@ -1,13 +1,19 @@
 admins:
-  - 123456789        # Replace with your Telegram user_id
-
-billing:
-  enabled: true
-  monthly_price_usd: 5.00
-  trial_notes: 10
-  payment_url: "https://your-payment-page.com"
+  - 123456789          # Replace with your Telegram user_id (integer)
 
 features:
-  weekly_digest: true
   vector_search: true
+  daily_digest: true
+  weekly_digest_push: true
   max_voice_duration_sec: 300
+  max_text_length_chars: 4000
+
+digest:
+  daily_time: "21:00"          # local system time for evening digest
+  weekly_day: "monday"
+  weekly_time: "08:00"
+  max_entries_per_summary: 50  # cap to avoid runaway token costs
+
+whisper:
+  use_local: false             # true on RPi, false for dev (uses OpenAI API)
+  local_model: "small"         # tiny | base | small | medium

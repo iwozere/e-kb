@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 import yaml
@@ -9,37 +9,41 @@ load_dotenv()
 
 
 @dataclass
-class BillingConfig:
-    enabled: bool
-    monthly_price_usd: float
-    trial_notes: int
-    payment_url: str
+class FeaturesConfig:
+    vector_search: bool = True
+    daily_digest: bool = True
+    weekly_digest_push: bool = True
+    max_voice_duration_sec: int = 300
+    max_text_length_chars: int = 4000
 
 
 @dataclass
-class FeaturesConfig:
-    weekly_digest: bool
-    vector_search: bool
-    max_voice_duration_sec: int
+class DigestConfig:
+    daily_time: str = "21:00"
+    weekly_day: str = "monday"
+    weekly_time: str = "08:00"
+    max_entries_per_summary: int = 50
+
+
+@dataclass
+class WhisperConfig:
+    use_local: bool = False
+    local_model: str = "small"
 
 
 @dataclass
 class Settings:
     telegram_bot_token: str
     openai_api_key: str
-    gemini_api_key: str
-    stripe_secret_key: str
-    stripe_webhook_secret: str
-    stripe_price_id: str
+    anthropic_api_key: str
     database_url: str
-    webhook_host: str
-    webhook_path: str
-    web_port: int
-    payment_hmac_secret: str
-    admins: List[int]
-
-    billing: BillingConfig
-    features: FeaturesConfig
+    webhook_host: str = ""
+    webhook_path: str = "/webhook"
+    web_port: int = 8080
+    admins: List[int] = field(default_factory=list)
+    features: FeaturesConfig = field(default_factory=FeaturesConfig)
+    digest: DigestConfig = field(default_factory=DigestConfig)
+    whisper: WhisperConfig = field(default_factory=WhisperConfig)
 
 
 def _load() -> Settings:
@@ -47,32 +51,35 @@ def _load() -> Settings:
     with open(cfg_path) as f:
         cfg = yaml.safe_load(f)
 
-    billing_raw = cfg.get("billing", {})
     features_raw = cfg.get("features", {})
+    digest_raw = cfg.get("digest", {})
+    whisper_raw = cfg.get("whisper", {})
 
     return Settings(
         telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
-        openai_api_key=os.environ["OPENAI_API_KEY"],
-        gemini_api_key=os.environ["GEMINI_API_KEY"],
-        stripe_secret_key=os.environ.get("STRIPE_SECRET_KEY", ""),
-        stripe_webhook_secret=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
-        stripe_price_id=os.environ.get("STRIPE_PRICE_ID", ""),
+        openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
+        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
         database_url=os.environ["DATABASE_URL"],
         webhook_host=os.environ.get("WEBHOOK_HOST", ""),
         webhook_path=os.environ.get("WEBHOOK_PATH", "/webhook"),
         web_port=int(os.environ.get("WEB_PORT", "8080")),
-        payment_hmac_secret=os.environ.get("PAYMENT_HMAC_SECRET", "change-me"),
         admins=[int(uid) for uid in cfg.get("admins", [])],
-        billing=BillingConfig(
-            enabled=billing_raw.get("enabled", True),
-            monthly_price_usd=billing_raw.get("monthly_price_usd", 5.00),
-            trial_notes=billing_raw.get("trial_notes", 10),
-            payment_url=billing_raw.get("payment_url", ""),
-        ),
         features=FeaturesConfig(
-            weekly_digest=features_raw.get("weekly_digest", True),
             vector_search=features_raw.get("vector_search", True),
+            daily_digest=features_raw.get("daily_digest", True),
+            weekly_digest_push=features_raw.get("weekly_digest_push", True),
             max_voice_duration_sec=features_raw.get("max_voice_duration_sec", 300),
+            max_text_length_chars=features_raw.get("max_text_length_chars", 4000),
+        ),
+        digest=DigestConfig(
+            daily_time=digest_raw.get("daily_time", "21:00"),
+            weekly_day=digest_raw.get("weekly_day", "monday"),
+            weekly_time=digest_raw.get("weekly_time", "08:00"),
+            max_entries_per_summary=digest_raw.get("max_entries_per_summary", 50),
+        ),
+        whisper=WhisperConfig(
+            use_local=whisper_raw.get("use_local", False),
+            local_model=whisper_raw.get("local_model", "small"),
         ),
     )
 

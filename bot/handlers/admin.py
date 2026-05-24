@@ -1,11 +1,9 @@
-from datetime import datetime, timezone
-
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
-from bot.db.models import Entry, Subscription, User
+from bot.db.models import Entry, User
 from bot.db.session import AsyncSessionLocal
 from bot.utils.config import settings
 
@@ -22,31 +20,51 @@ async def cmd_admin_stats(message: Message) -> None:
             await session.execute(select(func.count()).select_from(User))
         ).scalar() or 0
 
-        active_subs = (
-            await session.execute(
-                select(func.count())
-                .select_from(Subscription)
-                .where(Subscription.status == "active")
-                .where(Subscription.valid_until > datetime.now(timezone.utc))
-            )
-        ).scalar() or 0
-
-        trial_users = (
-            await session.execute(
-                select(func.count())
-                .select_from(Subscription)
-                .where(Subscription.status == "trial")
-            )
-        ).scalar() or 0
-
-        total_notes = (
+        total_entries = (
             await session.execute(select(func.count()).select_from(Entry))
         ).scalar() or 0
 
+        # Entries by type
+        type_counts = (
+            await session.execute(
+                select(Entry.entry_type, func.count().label("cnt"))
+                .group_by(Entry.entry_type)
+                .order_by(func.count().desc())
+            )
+        ).fetchall()
+
+        # Entries today
+        today_count = (
+            await session.execute(
+                text("""
+                    SELECT COUNT(*) FROM entries
+                    WHERE DATE(created_at AT TIME ZONE 'UTC') = CURRENT_DATE
+                """)
+            )
+        ).scalar() or 0
+
+        # Rough table sizes
+        size_rows = (
+            await session.execute(
+                text("""
+                    SELECT relname AS tbl,
+                           pg_size_pretty(pg_total_relation_size(oid)) AS size
+                    FROM pg_class
+                    WHERE relname IN ('entries', 'users', 'books',
+                                      'health_metrics', 'sport_logs', 'email_examples')
+                    ORDER BY pg_total_relation_size(oid) DESC
+                """)
+            )
+        ).fetchall()
+
+    type_lines = "\n".join(f"  {r.entry_type}: {r.cnt}" for r in type_counts)
+    size_lines = "\n".join(f"  {r.tbl}: {r.size}" for r in size_rows) if size_rows else "  n/a"
+
     await message.answer(
-        "<b>📊 Bot Stats</b>\n\n"
-        f"Total users:          {total_users}\n"
-        f"Active subscriptions: {active_subs}\n"
-        f"Trial users:          {trial_users}\n"
-        f"Total notes:          {total_notes}"
+        "<b>📊 Admin Stats</b>\n\n"
+        f"Total users:    {total_users}\n"
+        f"Total entries:  {total_entries}\n"
+        f"Entries today:  {today_count}\n\n"
+        f"<b>By type:</b>\n{type_lines or '  none'}\n\n"
+        f"<b>Table sizes:</b>\n{size_lines}"
     )

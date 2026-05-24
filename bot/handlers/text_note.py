@@ -3,47 +3,49 @@ import logging
 from aiogram import F, Router
 from aiogram.types import Message
 
-from bot.db.models import Entry
 from bot.db.session import AsyncSessionLocal
-from bot.services.embeddings import get_embedding
+from bot.services.entry_service import create_entry
+from bot.utils.config import settings
 
 logger = logging.getLogger(__name__)
 router = Router()
 
 _MIN_LENGTH = 10
-_MAX_LENGTH = 4000
+_TYPE_EMOJI = {"note": "📝", "book": "📚", "health": "💊", "sport": "🏃"}
 
 
 @router.message(F.text & ~F.text.startswith("/"))
 async def handle_text(message: Message) -> None:
     if not message.from_user:
         return
+
     text = (message.text or "").strip()
 
     if len(text) < _MIN_LENGTH:
-        return  # Silently ignore very short messages (reactions, "ok", etc.)
+        return  # Silently ignore very short messages
 
-    if len(text) > _MAX_LENGTH:
+    max_len = settings.features.max_text_length_chars
+    if len(text) > max_len:
         await message.answer(
-            f"Note is too long ({len(text)} chars). Maximum is {_MAX_LENGTH} characters."
+            f"Note is too long ({len(text)} chars). Maximum is {max_len} characters."
         )
         return
 
     try:
-        embedding = await get_embedding(text)
+        async with AsyncSessionLocal() as session:
+            entry = await create_entry(
+                session,
+                user_id=message.from_user.id,
+                text=text,
+                source="text",
+            )
+            await session.commit()
     except Exception:
-        logger.exception("Embedding failed for user %s", message.from_user.id)
-        embedding = None
+        logger.exception("Entry save failed for user %s", message.from_user.id)
+        await message.answer("Failed to save note. Please try again.")
+        return
 
-    async with AsyncSessionLocal() as session:
-        entry = Entry(
-            user_id=message.from_user.id,  # narrowed above
-            text=text,
-            source="text",
-            embedding=embedding,
-        )
-        session.add(entry)
-        await session.commit()
-
-    preview = text[:80] + ("…" if len(text) > 80 else "")
-    await message.answer(f"✅ Saved: <code>{preview}</code>")
+    emoji = _TYPE_EMOJI.get(str(entry.entry_type), "📝")
+    await message.answer(
+        f"✅ {emoji} [{entry.entry_type}] saved: {entry.title}"
+    )
