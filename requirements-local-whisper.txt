@@ -1,0 +1,12 @@
+# Optional: local (on-device) Whisper transcription via faster-whisper.
+#
+# Install this on top of requirements.txt ONLY on a Python interpreter whose
+# version ctranslate2 has published wheels for (Python 3.14 is not yet
+# supported as of writing — see https://github.com/OpenNMT/CTranslate2).
+#
+#   pip install -r requirements.txt -r requirements-local-whisper.txt
+#
+# Without this installed, set whisper.use_local: false in config.yaml (or
+# just leave it true — transcription.py detects the missing import and falls
+# back to the OpenAI Whisper API automatically, with a warning in the logs).
+faster-whisper>=1.0.0

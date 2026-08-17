@@ -5,6 +5,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand
 from sqlalchemy import select
 
 from bot.db.models import User
@@ -67,6 +68,23 @@ async def main() -> None:
     dp.include_router(admin.router)      # /admin_stats
     dp.include_router(voice.router)      # voice messages
     dp.include_router(text_note.router)  # plain text (catch-all — must be last)
+
+    # ── Register bot commands (shows in Telegram UI / BotFather list) ────────
+    await bot.set_my_commands([
+        BotCommand(command="start",       description="Welcome & full command list"),
+        BotCommand(command="help",        description="Command list"),
+        BotCommand(command="ask",         description="Ask your AI clone anything"),
+        BotCommand(command="search",      description="Semantic search your notes"),
+        BotCommand(command="log",         description="Structured log: /log book|health|sport …"),
+        BotCommand(command="draft",       description="Draft email reply in your style"),
+        BotCommand(command="profile",     description="View or update your profile & writing style"),
+        BotCommand(command="day",         description="Generate today's digest"),
+        BotCommand(command="summary",     description="Generate weekly digest"),
+        BotCommand(command="status",      description="Note count & streak"),
+        BotCommand(command="export",      description="Download all notes as Markdown"),
+        BotCommand(command="delete",      description="Delete an entry by ID"),
+    ])
+    logger.info("Bot commands registered.")
 
     # ── Scheduler ────────────────────────────────────────────────────────────
     first_names = await _fetch_first_names(settings.admins)

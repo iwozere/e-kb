@@ -37,6 +37,14 @@ def _get_local_model():
     return _local_model
 
 
+def _local_model_available() -> bool:
+    try:
+        import faster_whisper  # noqa: F401, PLC0415
+    except ImportError:
+        return False
+    return True
+
+
 def _transcribe_local_sync(file_path: str) -> str:
     model = _get_local_model()
     segments, _ = model.transcribe(file_path, beam_size=5)
@@ -63,5 +71,10 @@ async def _transcribe_api(file_path: str) -> str:
 async def transcribe_voice(file_path: str) -> str:
     """Transcribe an OGG audio file. Uses local model or API per config."""
     if settings.whisper.use_local:
-        return await _transcribe_local(file_path)
+        if _local_model_available():
+            return await _transcribe_local(file_path)
+        logger.warning(
+            "whisper.use_local is true but faster-whisper is not installed "
+            "(see requirements-local-whisper.txt) — falling back to the OpenAI API.",
+        )
     return await _transcribe_api(file_path)

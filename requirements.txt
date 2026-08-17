@@ -1,12 +1,18 @@
-aiogram==3.13.1
-sqlalchemy[asyncio]==2.0.36
-asyncpg==0.30.0
+aiogram==3.30.0
+sqlalchemy[asyncio]==2.0.52
+asyncpg==0.31.0
 alembic==1.14.0
 pgvector==0.3.6
 openai==1.58.1
 anthropic>=0.40.0
-faster-whisper>=1.0.0
 apscheduler>=3.10.4
 aiohttp>=3.9.0
 pyyaml==6.0.2
 python-dotenv==1.0.1
+
+# faster-whisper (local Whisper transcription) is intentionally NOT pinned here:
+# its backend, ctranslate2, has no Python 3.14 wheels yet (any platform), so it
+# cannot install on this interpreter. See requirements-local-whisper.txt.
+# bot/services/transcription.py falls back to the OpenAI Whisper API when it's
+# missing, so whisper.use_local: true will log a warning and use the API instead
+# until ctranslate2 catches up.
