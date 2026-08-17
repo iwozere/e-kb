@@ -5,6 +5,9 @@ venv/
 # Secrets — never commit
 .env
 
+# Per-deployment config (admin IDs, feature flags) — copy from config.yaml.example
+config.yaml
+
 # Python cache
 __pycache__/
 *.py[cod]

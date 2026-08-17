@@ -204,7 +204,13 @@ WEBHOOK_PATH=/webhook
 WEB_PORT=8080
 ```
 
-Edit `config.yaml`:
+`config.yaml` is per-deployment (admin IDs, feature flags) and gitignored, so `git pull`
+never collides with your live settings. Copy the template and edit it:
+
+```bash
+cp config.yaml.example config.yaml
+nano config.yaml
+```
 
 ```yaml
 admins:
