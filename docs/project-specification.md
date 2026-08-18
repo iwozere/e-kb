@@ -18,7 +18,7 @@ Deployment target: **Raspberry Pi 5** (ARM64, Debian/Ubuntu). PostgreSQL is pre-
 | Embeddings | OpenAI Embeddings API | `text-embedding-3-small`, $0.02/1M tokens |
 | Relational DB | PostgreSQL (pre-installed) | notes, users, payments |
 | Vector DB | ChromaDB | local persistent mode, no server needed |
-| AI summaries | Anthropic Claude API | `claude-sonnet-4-20250514` |
+| AI summaries | Anthropic Claude API | `claude-sonnet-4-6` |
 | Payments | Stripe (recommended) or YooKassa | webhook-based confirmation |
 | Config | `.env` + `config.yaml` | secrets in `.env`, admin list in `config.yaml` |
 | Process manager | `systemd` | production daemon on RPi |

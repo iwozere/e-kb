@@ -53,7 +53,7 @@ async def draft_reply(
     profile = await session.get(UserProfile, user_id)
     style_prompt = (
         profile.style_prompt
-        if profile and profile.style_prompt
+        if profile is not None and profile.style_prompt is not None
         else "Professional and concise."
     )
 
@@ -95,4 +95,5 @@ async def draft_reply(
         user=user_msg,
         max_tokens=800,
         cache_system=True,
+        effort="medium",
     )

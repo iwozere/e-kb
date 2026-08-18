@@ -26,7 +26,7 @@ The most valuable part is not the email drafting. It's the **accumulated life ar
 | Transcription | `faster-whisper` (local) | `small` model on RPi 5; fallback to OpenAI Whisper API |
 | Embeddings | OpenAI Embeddings API | `text-embedding-3-small` |
 | Relational DB + Vector | PostgreSQL 17 + pgvector | single store, single backup |
-| AI brain | Anthropic Claude API | `claude-sonnet-4-20250514` |
+| AI brain | Anthropic Claude API | `claude-sonnet-4-6` |
 | Scheduler | APScheduler | daily digest, weekly push |
 | Config | `.env` + `config.yaml` | secrets in `.env` |
 | Process manager | systemd | RPi production daemon |

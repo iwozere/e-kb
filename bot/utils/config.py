@@ -8,6 +8,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _require_env(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            f"Set it in .env (see .env.example)."
+        )
+    return value
+
+
 @dataclass
 class FeaturesConfig:
     vector_search: bool = True
@@ -56,10 +66,10 @@ def _load() -> Settings:
     whisper_raw = cfg.get("whisper", {})
 
     return Settings(
-        telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
-        openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
-        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
-        database_url=os.environ["DATABASE_URL"],
+        telegram_bot_token=_require_env("TELEGRAM_BOT_TOKEN"),
+        openai_api_key=_require_env("OPENAI_API_KEY"),
+        anthropic_api_key=_require_env("ANTHROPIC_API_KEY"),
+        database_url=_require_env("DATABASE_URL"),
         webhook_host=os.environ.get("WEBHOOK_HOST", ""),
         webhook_path=os.environ.get("WEBHOOK_PATH", "/webhook"),
         web_port=int(os.environ.get("WEB_PORT", "8080")),

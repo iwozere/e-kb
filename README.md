@@ -75,7 +75,7 @@ Designed to run on a **Raspberry Pi 5** (Ubuntu 25.10) — no cloud servers requ
 |---|---|
 | Language | Python 3.14 |
 | Bot framework | aiogram 3.x (async) |
-| AI brain | Anthropic Claude (`claude-sonnet-4-20250514`) + prompt caching |
+| AI brain | Anthropic Claude (`claude-sonnet-4-6`) + prompt caching |
 | Transcription | faster-whisper (local, CPU, int8) · OpenAI Whisper API (fallback) |
 | Embeddings | OpenAI `text-embedding-3-small` |
 | Vector search | pgvector (PostgreSQL extension) · HNSW index |
