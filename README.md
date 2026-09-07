@@ -69,6 +69,22 @@ Designed to run on a **Raspberry Pi 5** (Ubuntu 25.10) — no cloud servers requ
 
 ---
 
+## Access control
+
+This bot is **admin-only**. `AccessMiddleware` checks every incoming message/callback
+against the `admins:` list in `config.yaml` (Telegram numeric user IDs) and silently
+drops anything from anyone else — no reply, no DB write, no LLM call, so strangers can't
+see the bot works or spend your Anthropic/OpenAI quota.
+
+Each admin gets a fully isolated data space: every query is scoped by the caller's
+Telegram `user_id` (`entries`, `user_profiles`, `email_examples` all carry it), so with
+multiple admins configured, nobody can see, search, export, or delete anyone else's
+notes. The one exception is `/admin_stats`, which shows aggregate counts (total users,
+total entries, table sizes) across **all** admins, not per-admin — it doesn't expose
+note content, just totals.
+
+---
+
 ## Stack
 
 | Layer | Technology |
