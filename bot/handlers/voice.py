@@ -51,7 +51,7 @@ async def handle_voice(message: Message, bot: Bot) -> None:
 
     try:
         async with AsyncSessionLocal() as session:
-            entry = await create_entry(
+            entry, degraded_reason = await create_entry(
                 session,
                 user_id=user_id,
                 text=transcript,
@@ -68,3 +68,8 @@ async def handle_voice(message: Message, bot: Bot) -> None:
     await status_msg.edit_text(
         f"✅ {emoji} [{entry.entry_type}] saved: {entry.title}"
     )
+    if degraded_reason:
+        await message.answer(
+            f"⚠️ Claude API unavailable ({degraded_reason}) — saved as a "
+            "plain note without AI classification."
+        )

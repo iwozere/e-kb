@@ -17,7 +17,7 @@ from aiogram.types import Message
 from bot.db.session import AsyncSessionLocal
 from bot.db.models import UserProfile
 from bot.services.conversation import add_turn, clear_history, get_history
-from bot.services.llm import complete_with_history
+from bot.services.llm import LLMUsageError, complete_with_history
 from bot.services.vector_store import search_similar
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,11 @@ async def cmd_ask(message: Message) -> None:
     try:
         async with AsyncSessionLocal() as session:
             profile = await session.get(UserProfile, user_id)
-            about = str(profile.about) if profile and profile.about else ""
+            about = (
+                profile.about
+                if profile is not None and profile.about is not None
+                else ""
+            )
 
             results = await search_similar(session, user_id, question, limit=10)
 
@@ -89,6 +93,10 @@ async def cmd_ask(message: Message) -> None:
         add_turn(user_id, question, answer)
         await thinking.edit_text(answer)
 
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for /ask user %s", e, user_id)
+        clear_history(user_id)
+        await thinking.edit_text(f"⚠️ Claude API unavailable ({e}). Please try again later.")
     except Exception:
         logger.exception("Ask failed for user %s", user_id)
         clear_history(user_id)

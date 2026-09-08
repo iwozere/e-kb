@@ -20,6 +20,7 @@ from aiogram.types import (
 
 from bot.db.models import EmailExample
 from bot.db.session import AsyncSessionLocal
+from bot.services.llm import LLMUsageError
 from bot.services.style_engine import draft_reply
 from bot.utils.config import settings
 
@@ -75,6 +76,9 @@ async def cmd_draft(message: Message) -> None:
             f"📧 <b>Draft reply:</b>\n\n{draft}",
             reply_markup=_keyboard(cid),
         )
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for /draft user %s", e, user_id)
+        await thinking.edit_text(f"⚠️ Claude API unavailable ({e}). Please try again later.")
     except Exception:
         logger.exception("Draft failed for user %s", user_id)
         await thinking.edit_text("Draft generation failed. Please try again.")
@@ -82,7 +86,7 @@ async def cmd_draft(message: Message) -> None:
 
 @router.callback_query(F.data.startswith("save_example:"))
 async def cb_save_example(callback: CallbackQuery) -> None:
-    if not callback.from_user:
+    if not callback.from_user or not callback.data:
         await callback.answer()
         return
 
@@ -101,13 +105,17 @@ async def cb_save_example(callback: CallbackQuery) -> None:
         await session.commit()
 
     await callback.answer("✅ Saved as style example!")
-    if callback.message:
+    if isinstance(callback.message, Message):
         await callback.message.edit_reply_markup(reply_markup=None)
 
 
 @router.callback_query(F.data.startswith("regen_draft:"))
 async def cb_regen_draft(callback: CallbackQuery) -> None:
-    if not callback.from_user or not callback.message:
+    if (
+        not callback.from_user
+        or not callback.data
+        or not isinstance(callback.message, Message)
+    ):
         await callback.answer()
         return
 
@@ -136,6 +144,9 @@ async def cb_regen_draft(callback: CallbackQuery) -> None:
             f"📧 <b>Draft reply (regenerated):</b>\n\n{new_draft}",
             reply_markup=_keyboard(new_cid),
         )
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) regenerating draft for user %s", e, user_id)
+        await callback.message.answer(f"⚠️ Claude API unavailable ({e}). Please try again later.")
     except Exception:
         logger.exception("Regenerate draft failed for user %s", user_id)
         await callback.message.answer("Regeneration failed. Please try again.")

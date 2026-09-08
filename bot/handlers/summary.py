@@ -7,6 +7,7 @@ from aiogram.types import Message
 
 from bot.db.session import AsyncSessionLocal
 from bot.services.daily_digest import generate_daily_summary, generate_weekly_summary
+from bot.services.llm import LLMUsageError
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -35,6 +36,9 @@ async def cmd_day(message: Message) -> None:
             return
 
         await thinking.edit_text(f"📋 <b>Daily summary</b>\n\n{summary}")
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for /day user %s", e, user_id)
+        await thinking.edit_text(f"⚠️ Claude API unavailable ({e}). Please try again later.")
     except Exception:
         logger.exception("Daily digest failed for user %s", user_id)
         await thinking.edit_text("Failed to generate summary. Please try again.")
@@ -64,6 +68,9 @@ async def cmd_summary(message: Message) -> None:
             return
 
         await thinking.edit_text(f"📊 <b>Weekly summary</b>\n\n{summary}")
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for /summary user %s", e, user_id)
+        await thinking.edit_text(f"⚠️ Claude API unavailable ({e}). Please try again later.")
     except Exception:
         logger.exception("Weekly summary failed for user %s", user_id)
         await thinking.edit_text("Failed to generate summary. Please try again.")

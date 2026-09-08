@@ -2,7 +2,7 @@
 import json
 import logging
 
-from bot.services.llm import complete
+from bot.services.llm import LLMUsageError, complete
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,12 @@ _STRUCTURED_PROMPTS = {
 async def classify_entry(text: str) -> str:
     """
     Classify text into an entry type.  Returns one of: note, book, health, sport.
-    Defaults to 'note' on errors or low confidence (< 0.7).
+    Defaults to 'note' on parsing/transient errors or low confidence (< 0.7).
+
+    Raises ``LLMUsageError`` unchanged when Claude is unreachable for an
+    account-level reason (out of credits, bad key, rate limit) — that's not
+    a "default and move on" situation, so callers should warn the user
+    instead of silently filing everything as 'note'.
     """
     try:
         response = await complete(
@@ -56,13 +61,19 @@ async def classify_entry(text: str) -> str:
         if entry_type not in _VALID_TYPES or confidence < 0.7:
             return "note"
         return entry_type
+    except LLMUsageError:
+        raise
     except Exception:
         logger.exception("Classification failed — defaulting to 'note'")
         return "note"
 
 
 async def generate_title(text: str) -> str:
-    """Generate a concise 5-word title for an entry."""
+    """Generate a concise 5-word title for an entry.
+
+    Raises ``LLMUsageError`` unchanged (see ``classify_entry``) so callers
+    can warn the user instead of silently truncating every title.
+    """
     try:
         response = await complete(
             system=(
@@ -73,6 +84,8 @@ async def generate_title(text: str) -> str:
             max_tokens=20,
         )
         return response.strip().strip('"').strip("'")
+    except LLMUsageError:
+        raise
     except Exception:
         logger.exception("Title generation failed — using text prefix")
         # Fallback: first 50 printable chars

@@ -21,7 +21,7 @@ from bot.db.models import Book, Entry, HealthMetric, SportLog
 from bot.db.session import AsyncSessionLocal
 from bot.services.classifier import generate_title
 from bot.services.embeddings import get_embedding
-from bot.services.llm import complete
+from bot.services.llm import LLMUsageError, complete
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -83,13 +83,23 @@ async def cmd_log(message: Message) -> None:
             max_tokens=200,
         )
         data = json.loads(raw.strip())
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for /log user %s", e, user_id)
+        await thinking.edit_text(f"⚠️ Claude API unavailable ({e}). Please try again later.")
+        return
     except Exception:
         logger.exception("Log parse failed for user %s", user_id)
         await thinking.edit_text("Failed to parse log entry. Please try again.")
         return
 
     full_text = f"{log_type}: {log_text}"
-    title = await generate_title(full_text)
+    degraded_reason: str | None = None
+    try:
+        title = await generate_title(full_text)
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) generating /log title for user %s", e, user_id)
+        degraded_reason = str(e)
+        title = full_text[:50].replace("\n", " ").strip()
 
     try:
         embedding = await get_embedding(full_text)
@@ -148,3 +158,8 @@ async def cmd_log(message: Message) -> None:
 
     emoji = {"book": "📚", "health": "💊", "sport": "🏃"}[log_type]
     await thinking.edit_text(f"✅ {emoji} {log_type.capitalize()} logged: {title}")
+    if degraded_reason:
+        await message.answer(
+            f"⚠️ Claude API unavailable ({degraded_reason}) — title saved "
+            "as a text prefix instead of AI-generated."
+        )

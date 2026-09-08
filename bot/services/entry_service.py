@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.db.models import Book, Entry, HealthMetric, SportLog
 from bot.services.classifier import classify_entry, extract_structured, generate_title
 from bot.services.embeddings import get_embedding
+from bot.services.llm import LLMUsageError
 from bot.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ async def create_entry(
     text: str,
     source: str,
     duration_s: int | None = None,
-) -> Entry:
+) -> tuple[Entry, str | None]:
     """
     Full entry-creation pipeline:
       1. Truncate to config limit
@@ -32,13 +33,26 @@ async def create_entry(
       5. INSERT into entries
       6. INSERT into structured sub-table (book / health_metric / sport_log)
 
-    Returns the flushed (but not yet committed) Entry.
-    Caller must ``await session.commit()`` after this.
+    Returns ``(entry, degraded_reason)`` — the flushed (but not yet
+    committed) Entry, plus a short reason string when Claude was
+    unreachable for an account-level cause (out of credits, bad key, rate
+    limit) and the entry was saved with default classification instead.
+    ``degraded_reason`` is None on a normal, fully-classified save.
+    Caller must ``await session.commit()`` after this either way.
     """
     text = text[: settings.features.max_text_length_chars]
 
-    entry_type = await classify_entry(text)
-    title = await generate_title(text)
+    degraded_reason: str | None = None
+    try:
+        entry_type = await classify_entry(text)
+        title = await generate_title(text)
+    except LLMUsageError as e:
+        logger.error(
+            "LLM unavailable (%s) — saving entry as plain note for user %s", e, user_id
+        )
+        degraded_reason = str(e)
+        entry_type = "note"
+        title = text[:50].replace("\n", " ").strip()
 
     try:
         embedding = await get_embedding(text)
@@ -58,9 +72,10 @@ async def create_entry(
     session.add(entry)
     await session.flush()  # populate entry.id before structured save
 
-    await _save_structured(session, user_id, entry.id, entry_type, text)
+    if degraded_reason is None:
+        await _save_structured(session, user_id, entry.id, entry_type, text)
 
-    return entry
+    return entry, degraded_reason
 
 
 async def _save_structured(

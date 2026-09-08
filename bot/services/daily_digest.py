@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.db.models import Entry
 from bot.db.session import AsyncSessionLocal
 from bot.services.embeddings import get_embedding
-from bot.services.llm import complete
+from bot.services.llm import LLMUsageError, complete
 from bot.services.vector_store import fetch_recent_summaries, fetch_today_entries
 from bot.utils.config import settings
 
@@ -148,6 +148,12 @@ async def scheduled_daily_digest(bot, user_id: int, first_name: str) -> None:
                 f"📋 *Daily summary*\n\n{text}",
                 parse_mode="Markdown",
             )
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for scheduled daily digest, user %s", e, user_id)
+        await bot.send_message(
+            user_id,
+            f"⚠️ Couldn't generate today's daily summary — Claude API unavailable ({e}).",
+        )
     except Exception:
         logger.exception("Scheduled daily digest failed for user %s", user_id)
 
@@ -165,6 +171,12 @@ async def scheduled_weekly_digest(bot, user_id: int, first_name: str) -> None:
                 f"📊 *Weekly summary*\n\n{text}",
                 parse_mode="Markdown",
             )
+    except LLMUsageError as e:
+        logger.error("LLM unavailable (%s) for scheduled weekly digest, user %s", e, user_id)
+        await bot.send_message(
+            user_id,
+            f"⚠️ Couldn't generate this week's summary — Claude API unavailable ({e}).",
+        )
     except Exception:
         logger.exception("Scheduled weekly digest failed for user %s", user_id)
 
